@@ -1,0 +1,67 @@
+[
+  {
+    "id": "langchain",
+    "name": "LangChain",
+    "docs_url": "https://docs.langchain.com",
+    "repo_url": "https://github.com/langchain-ai/langchain",
+    "languages": ["python"],
+    "packages": {
+      "pypi": ["langchain", "langchain-openai", "langchain-core", "langchain-community"],
+      "npm": []
+    },
+    "aliases": ["lang-chain"],
+    "llms_txt_url": "https://docs.langchain.com/llms.txt"
+  },
+  {
+    "id": "pydantic",
+    "name": "Pydantic",
+    "docs_url": "https://docs.pydantic.dev",
+    "repo_url": "https://github.com/pydantic/pydantic",
+    "languages": ["python"],
+    "packages": {
+      "pypi": ["pydantic", "pydantic-settings", "pydantic-core"],
+      "npm": []
+    },
+    "aliases": [],
+    "llms_txt_url": "https://docs.pydantic.dev/latest/llms.txt"
+  },
+  {
+    "id": "react",
+    "name": "React",
+    "docs_url": "https://react.dev",
+    "repo_url": "https://github.com/facebook/react",
+    "languages": ["javascript", "typescript"],
+    "packages": {
+      "pypi": [],
+      "npm": ["react", "react-dom"]
+    },
+    "aliases": ["reactjs"],
+    "llms_txt_url": "https://react.dev/llms.txt"
+  },
+  {
+    "id": "nextjs",
+    "name": "Next.js",
+    "docs_url": "https://nextjs.org/docs",
+    "repo_url": "https://github.com/vercel/next.js",
+    "languages": ["javascript", "typescript"],
+    "packages": {
+      "pypi": [],
+      "npm": ["next"]
+    },
+    "aliases": ["next"],
+    "llms_txt_url": "https://nextjs.org/docs/llms-full.txt"
+  },
+  {
+    "id": "openai",
+    "name": "OpenAI SDK",
+    "docs_url": "https://platform.openai.com/docs",
+    "repo_url": "https://github.com/openai/openai-python",
+    "languages": ["python", "typescript"],
+    "packages": {
+      "pypi": ["openai"],
+      "npm": ["openai"]
+    },
+    "aliases": ["openai-sdk"],
+    "llms_txt_url": "https://developers.openai.com/api/docs/llms.txt"
+  }
+]
