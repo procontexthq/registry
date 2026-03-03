@@ -13,6 +13,7 @@ Usage:
 
 import argparse
 import concurrent.futures
+import datetime
 import hashlib
 import json
 import re
@@ -29,6 +30,7 @@ from urllib.parse import urlparse
 REPO_ROOT = Path(__file__).parent.parent
 LIBRARIES_FILE = REPO_ROOT / "docs" / "known-libraries.json"
 METADATA_FILE = REPO_ROOT / "docs" / "registry_metadata.json"
+FAILED_URLS_FILE = REPO_ROOT / "data" / "failed_url_checks.json"
 
 # --------------------------------------------------------------------------- #
 # Constants
@@ -368,6 +370,47 @@ def check_pypi(libraries: list[Any]) -> list[ValidationError]:
 
 
 # --------------------------------------------------------------------------- #
+# Failed-URL entry persistence
+# --------------------------------------------------------------------------- #
+
+
+def append_failed_url_entries(libraries: list[Any], url_errors: list[ValidationError]) -> None:
+    """Append entries that failed Rule 20 to FAILED_URLS_FILE (deduplicates by id)."""
+    failed_ids = {err.entry_id for err in url_errors if err.rule == 20 and err.entry_id}
+    if not failed_ids:
+        return
+
+    existing: list[dict] = []
+    if FAILED_URLS_FILE.exists():
+        try:
+            with open(FAILED_URLS_FILE) as f:
+                data = json.load(f)
+            if isinstance(data, list):
+                existing = data
+        except (json.JSONDecodeError, OSError):
+            existing = []
+
+    existing_ids = {e.get("id") for e in existing if isinstance(e, dict)}
+    new_entries = [
+        e for e in libraries
+        if isinstance(e, dict) and e.get("id") in failed_ids and e.get("id") not in existing_ids
+    ]
+
+    if not new_entries:
+        print(f"  (all failing entries already recorded in {FAILED_URLS_FILE.relative_to(REPO_ROOT)})")
+        return
+
+    FAILED_URLS_FILE.parent.mkdir(exist_ok=True)
+    with open(FAILED_URLS_FILE, "w") as f:
+        json.dump(existing + new_entries, f, indent=2)
+        f.write("\n")
+    print(
+        f"  {len(new_entries)} new failing entr{'y' if len(new_entries) == 1 else 'ies'} "
+        f"appended to {FAILED_URLS_FILE.relative_to(REPO_ROOT)}"
+    )
+
+
+# --------------------------------------------------------------------------- #
 # Checksum helpers
 # --------------------------------------------------------------------------- #
 
@@ -378,13 +421,25 @@ def compute_checksum(path: Path) -> str:
     return "sha256:" + hashlib.sha256(data).hexdigest()
 
 
+def _bump_version(current: str) -> str:
+    today = datetime.date.today().isoformat()
+    m = re.match(r"^(\d{4}-\d{2}-\d{2})(?:-v(\d+))?$", current)
+    if m:
+        date_part, n = m.group(1), int(m.group(2) or 1)
+        return f"{today}-v{n + 1}" if date_part == today else f"{today}-v1"
+    return f"{today}-v1"
+
+
 def update_metadata(checksum: str, metadata_path: Path) -> None:
     with open(metadata_path) as f:
         meta = json.load(f)
+    new_version = _bump_version(meta.get("version", ""))
     meta["checksum"] = checksum
+    meta["version"] = new_version
     with open(metadata_path, "w") as f:
         json.dump(meta, f, indent=2)
         f.write("\n")
+    print(f"  version:  {new_version}")
     print(f"  checksum: {checksum}")
     print(f"  written to: {metadata_path.relative_to(REPO_ROOT)}")
 
@@ -403,7 +458,10 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
     if getattr(args, "urls", False) and libraries:
         print("Checking URL reachability (slow) ...")
-        errors += check_urls(libraries)
+        url_errors = check_urls(libraries)
+        errors += url_errors
+        if url_errors:
+            append_failed_url_entries(libraries, url_errors)
 
     if getattr(args, "pypi", False) and libraries:
         print("Checking PyPI packages (slow) ...")

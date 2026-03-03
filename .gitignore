@@ -26,3 +26,6 @@ __pycache__/
 .venv/
 .uv/
 uv.lock
+
+# Local tooling output
+data/
