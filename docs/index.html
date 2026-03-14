@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProContext Live Registry List</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      max-width: 640px;
+      margin: 40px auto;
+      padding: 0 20px;
+      color: #222;
+    }
+    h1 { font-size: 1.4rem; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; }
+    h1 img { width: 28px; height: 28px; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { padding: 8px 0; border-bottom: 1px solid #eee; }
+    .name { font-weight: 600; }
+    .desc { color: #555; margin-left: 4px; }
+    .meta { font-size: 0.85rem; color: #555; margin-bottom: 16px; line-height: 1.6; }
+    .meta span { color: #888; }
+
+  </style>
+</head>
+<body>
+  <h1><img src="favicon.svg" alt="pX">ProContext Live Registry List</h1>
+  <div class="meta" id="meta"></div>
+  <ul id="list"></ul>
+  <script>
+    fetch("registry_metadata.json")
+      .then(r => r.json())
+      .then(meta => {
+        const el = document.getElementById("meta");
+        el.innerHTML =
+          "<span>Version:</span> " + meta.version +
+          "<br><span>Checksum:</span> " + meta.checksum;
+      });
+
+    fetch("known-libraries.json")
+      .then(r => r.json())
+      .then(libs => {
+        const metaEl = document.getElementById("meta");
+        metaEl.innerHTML += "<br><span>Libraries:</span> " + libs.length;
+        const ul = document.getElementById("list");
+        libs.forEach(lib => {
+          const li = document.createElement("li");
+          const name = document.createElement("span");
+          name.className = "name";
+          name.textContent = lib.name;
+          li.appendChild(name);
+          if (lib.description) {
+            const desc = document.createElement("span");
+            desc.className = "desc";
+            desc.textContent = " — " + lib.description;
+            li.appendChild(desc);
+          }
+          ul.appendChild(li);
+        });
+      });
+  </script>
+</body>
+</html>
