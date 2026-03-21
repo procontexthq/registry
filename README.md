@@ -2,6 +2,8 @@
 
 This repository hosts the library registry for [ProContext](https://github.com/procontexthq/procontext) â€” an MCP server that gives AI coding agents accurate, up-to-date library documentation.
 
+The live registry is published at [procontexthq.github.io](https://procontexthq.github.io/).
+
 ## What's in here
 
 ```
@@ -22,7 +24,7 @@ See **[registry-schema.md](registry-schema.md)** for the full field reference â€
 ```json
 {
   "version": "YYYY-MM-DD",
-  "download_url": "https://<pages-url>/docs/known-libraries.json",
+  "download_url": "https://procontexthq.github.io/docs/known-libraries.json",
   "checksum": "sha256:<hex>"
 }
 ```
@@ -104,4 +106,4 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add
 
 ## License
 
-This project is licensed under the [GNU General Public License v3.0](LICENSE).
+This project is licensed under the [MIT License](LICENSE).
