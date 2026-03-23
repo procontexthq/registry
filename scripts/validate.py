@@ -7,10 +7,10 @@ ProContext Registry — validation and checksum management.
 Schema reference: registry-schema.md
 
 Usage:
-    uv run scripts/validate.py validate              # fast schema check (rules 1–21)
+    uv run scripts/validate.py validate              # fast schema check (rules 1–27)
     uv run scripts/validate.py validate --urls       # + URL reachability (rule 22)
     uv run scripts/validate.py validate --pypi       # + PyPI package existence (rule 23)
-    uv run scripts/validate.py checksum              # compute & update checksum only
+    uv run scripts/validate.py checksum              # compute & update both checksums only
     uv run scripts/validate.py all                   # validate then update checksum
     uv run scripts/validate.py all --urls --pypi     # everything
 """
@@ -33,6 +33,7 @@ from urllib.parse import urlparse
 
 REPO_ROOT = Path(__file__).parent.parent
 LIBRARIES_FILE = REPO_ROOT / "docs" / "known-libraries.json"
+ADDITIONAL_INFO_FILE = REPO_ROOT / "docs" / "registry-additional-info.json"
 METADATA_FILE = REPO_ROOT / "docs" / "registry_metadata.json"
 FAILED_URLS_FILE = REPO_ROOT / "data" / "failed_url_checks.json"
 
@@ -40,7 +41,7 @@ FAILED_URLS_FILE = REPO_ROOT / "data" / "failed_url_checks.json"
 # Constants — see registry-schema.md for field definitions
 # --------------------------------------------------------------------------- #
 
-KNOWN_FIELDS = frozenset({"id", "name", "description", "llms_txt_url", "aliases", "packages"})
+KNOWN_FIELDS = frozenset({"id", "name", "description", "llms_txt_url", "llms_full_txt_url", "aliases", "packages"})
 KNOWN_PACKAGE_ENTRY_FIELDS = frozenset({"ecosystem", "languages", "package_names", "readme_url", "repo_url"})
 VALID_ECOSYSTEMS = frozenset({"pypi", "npm", "conda", "jsr"})
 ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
@@ -66,31 +67,72 @@ class ValidationError:
 # --------------------------------------------------------------------------- #
 
 
-def validate_file(path: Path) -> tuple[list[Any] | None, list[ValidationError]]:
-    """Parse JSON and validate top-level structure. Returns (libraries, errors)."""
+def load_json_file(path: Path, rule: int) -> tuple[Any | None, list[ValidationError]]:
+    """Parse JSON and return (data, errors)."""
     errors: list[ValidationError] = []
-
-    # Rule 19: valid JSON
     try:
         with open(path, "rb") as f:
             raw = f.read()
-        libraries = json.loads(raw)
+        return json.loads(raw), errors
     except json.JSONDecodeError as exc:
-        errors.append(ValidationError(19, None, f"Invalid JSON: {exc}"))
+        errors.append(ValidationError(rule, None, f"Invalid JSON in {path.name}: {exc}"))
+        return None, errors
+
+ 
+def validate_libraries_file(path: Path) -> tuple[list[Any] | None, list[ValidationError]]:
+    """Validate known-libraries.json shape. Returns (libraries, errors)."""
+    libraries, errors = load_json_file(path, 19)
+    if libraries is None:
         return None, errors
 
     # Rule 20: top-level is an array
     if not isinstance(libraries, list):
         errors.append(
-            ValidationError(20, None, f"Top-level must be an array, got {type(libraries).__name__}")
+            ValidationError(20, None, f"{path.name} top-level must be an array, got {type(libraries).__name__}")
         )
         return None, errors
 
     # Rule 21: array is non-empty
     if not libraries:
-        errors.append(ValidationError(21, None, "Array must not be empty"))
+        errors.append(ValidationError(21, None, f"{path.name} array must not be empty"))
 
     return libraries, errors
+
+
+def validate_additional_info_file(path: Path) -> list[ValidationError]:
+    """Validate registry-additional-info.json structure."""
+    data, errors = load_json_file(path, 24)
+    if data is None:
+        return errors
+
+    if not isinstance(data, dict):
+        errors.append(
+            ValidationError(25, None, f"{path.name} top-level must be an object, got {type(data).__name__}")
+        )
+        return errors
+
+    urls = data.get("useful_md_probe_base_urls")
+    if not isinstance(urls, list) or not urls:
+        errors.append(
+            ValidationError(
+                26,
+                None,
+                f"{path.name} must contain a non-empty useful_md_probe_base_urls array",
+            )
+        )
+        return errors
+
+    for i, value in enumerate(urls):
+        if not _is_valid_url(value):
+            errors.append(
+                ValidationError(
+                    27,
+                    None,
+                    f"{path.name} useful_md_probe_base_urls[{i}] is not a valid URL: {value!r}",
+                )
+            )
+
+    return errors
 
 
 # --------------------------------------------------------------------------- #
@@ -452,17 +494,19 @@ def _bump_version(current: str) -> str:
     return f"{today}-v1"
 
 
-def update_metadata(checksum: str, metadata_path: Path) -> None:
+def update_metadata(libraries_checksum: str, additional_info_checksum: str, metadata_path: Path) -> None:
     with open(metadata_path) as f:
         meta = json.load(f)
     new_version = _bump_version(meta.get("version", ""))
-    meta["checksum"] = checksum
+    meta["checksum"] = libraries_checksum
+    meta["additional_info_checksum"] = additional_info_checksum
     meta["version"] = new_version
     with open(metadata_path, "w") as f:
         json.dump(meta, f, indent=2)
         f.write("\n")
     print(f"  version:  {new_version}")
-    print(f"  checksum: {checksum}")
+    print(f"  checksum: {libraries_checksum}")
+    print(f"  additional_info_checksum: {additional_info_checksum}")
     print(f"  written to: {metadata_path.relative_to(REPO_ROOT)}")
 
 
@@ -474,9 +518,12 @@ def update_metadata(checksum: str, metadata_path: Path) -> None:
 def cmd_validate(args: argparse.Namespace) -> int:
     print(f"Validating {LIBRARIES_FILE.relative_to(REPO_ROOT)} ...")
 
-    libraries, errors = validate_file(LIBRARIES_FILE)
+    libraries, errors = validate_libraries_file(LIBRARIES_FILE)
     if libraries is not None:
         errors += validate_libraries(libraries)
+
+    print(f"Validating {ADDITIONAL_INFO_FILE.relative_to(REPO_ROOT)} ...")
+    errors += validate_additional_info_file(ADDITIONAL_INFO_FILE)
 
     if getattr(args, "urls", False) and libraries:
         print("Checking URL reachability (slow) ...")
@@ -501,9 +548,11 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 
 def cmd_checksum(_args: argparse.Namespace) -> int:
-    checksum = compute_checksum(LIBRARIES_FILE)
+    libraries_checksum = compute_checksum(LIBRARIES_FILE)
+    additional_info_checksum = compute_checksum(ADDITIONAL_INFO_FILE)
     print(f"Computing checksum for {LIBRARIES_FILE.relative_to(REPO_ROOT)} ...")
-    update_metadata(checksum, METADATA_FILE)
+    print(f"Computing checksum for {ADDITIONAL_INFO_FILE.relative_to(REPO_ROOT)} ...")
+    update_metadata(libraries_checksum, additional_info_checksum, METADATA_FILE)
     return 0
 
 
@@ -528,10 +577,10 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 examples:
-  uv run scripts/validate.py validate              fast schema check (rules 1-21)
+  uv run scripts/validate.py validate              fast schema check (rules 1-27)
   uv run scripts/validate.py validate --urls       + URL reachability (rule 22)
   uv run scripts/validate.py validate --pypi       + PyPI package existence (rule 23)
-  uv run scripts/validate.py checksum              compute & update checksum only
+  uv run scripts/validate.py checksum              compute & update both checksums only
   uv run scripts/validate.py all                   validate then update checksum
   uv run scripts/validate.py all --urls --pypi     run everything
 """,
@@ -540,7 +589,7 @@ examples:
 
     # validate
     p_validate = subparsers.add_parser(
-        "validate", help="Validate registry structure (rules 1–21 always; 22–23 optional)"
+        "validate", help="Validate registry structure (rules 1–27 always; 22–23 optional)"
     )
     p_validate.add_argument(
         "--urls", action="store_true", help="Also check URL reachability (rule 22, slow)"
@@ -552,7 +601,7 @@ examples:
 
     # checksum
     p_checksum = subparsers.add_parser(
-        "checksum", help="Compute SHA-256 and update registry_metadata.json (no validation)"
+        "checksum", help="Compute SHA-256 values and update registry_metadata.json (no validation)"
     )
     p_checksum.set_defaults(func=cmd_checksum)
 

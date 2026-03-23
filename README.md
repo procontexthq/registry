@@ -8,30 +8,35 @@ The live registry is published at [procontexthq.github.io](https://procontexthq.
 
 ```
 docs/
-├── known-libraries.json     # The registry — one entry per supported library
-└── registry_metadata.json   # Version pointer + checksum, fetched by ProContext on startup
-registry-schema.md           # Canonical schema reference for known-libraries.json
+├── known-libraries.json          # The registry — one entry per supported library
+├── registry-additional-info.json # Extra registry metadata used by probes and enrichment
+└── registry_metadata.json        # Version pointer + checksums, fetched by ProContext on startup
+registry-schema.md                # Canonical schema reference for registry JSON files
 ```
 
-ProContext polls `registry_metadata.json` every 24 hours. When the `version` changes, it downloads `known-libraries.json`, verifies the SHA-256 checksum, and updates its in-memory index.
+ProContext polls `registry_metadata.json` every 24 hours. When the `version` changes, it downloads `known-libraries.json` and `registry-additional-info.json`, verifies their SHA-256 checksums, and updates its in-memory index.
+
+`registry-additional-info.json` stores supplemental data used outside the core library index. In particular, `useful_md_probe_base_urls` lists documentation URLs that should be probed by appending `.md` to determine whether they expose a valid Markdown document directly.
 
 ## Schema
 
-See **[registry-schema.md](registry-schema.md)** for the full field reference — library-level fields, `PackageEntry` fields, and the `resolve_library` response format.
+See **[registry-schema.md](registry-schema.md)** for the full field reference — library-level fields, `PackageEntry` fields, `registry-additional-info.json`, and the `resolve_library` response format.
 
 ## Registry metadata format
 
 ```json
 {
   "version": "YYYY-MM-DD",
-  "download_url": "https://procontexthq.github.io/docs/known-libraries.json",
-  "checksum": "sha256:<hex>"
+  "download_url": "https://procontexthq.github.io/known-libraries.json",
+  "checksum": "sha256:<hex>",
+  "additional_info_download_url": "https://procontexthq.github.io/registry-additional-info.json",
+  "additional_info_checksum": "sha256:<hex>"
 }
 ```
 
 ## Validation & tooling
 
-The `scripts/validate.py` script validates `docs/known-libraries.json` and keeps `registry_metadata.json` in sync. It requires Python ≥ 3.11 and [uv](https://docs.astral.sh/uv/).
+The `scripts/validate.py` script validates `docs/known-libraries.json` and `docs/registry-additional-info.json`, then keeps `registry_metadata.json` in sync. It requires Python ≥ 3.11 and [uv](https://docs.astral.sh/uv/).
 
 ### Setup
 
@@ -43,10 +48,10 @@ uv sync
 
 | Command | What it does |
 |---------|--------------|
-| `uv run scripts/validate.py validate` | Fast schema check (rules 1–21) |
+| `uv run scripts/validate.py validate` | Fast schema check (rules 1–27) |
 | `uv run scripts/validate.py validate --urls` | Schema check + URL reachability (rule 22) |
 | `uv run scripts/validate.py validate --pypi` | Schema check + PyPI existence (rule 23) |
-| `uv run scripts/validate.py checksum` | Compute SHA-256 and update `registry_metadata.json` only |
+| `uv run scripts/validate.py checksum` | Compute SHA-256 for both registry JSON files and update `registry_metadata.json` |
 | `uv run scripts/validate.py all` | Validate then update checksum (aborts on errors) |
 | `uv run scripts/validate.py all --urls --pypi` | Run all checks |
 
@@ -65,6 +70,8 @@ uv sync
 | 7 | `aliases` is a list of strings |
 | 8 | `packages`, if present, is an array (not an object) |
 | 9 | No fields outside the known set — catches typos like `alias` instead of `aliases` |
+
+Known library-level fields also include optional `llms_full_txt_url` values where a provider publishes a full-documentation entry point.
 
 #### Per-entry rules (PackageEntry level)
 
@@ -89,9 +96,13 @@ uv sync
 
 | # | Rule |
 |---|------|
-| 19 | File is valid JSON |
-| 20 | Top-level structure is an array |
-| 21 | Array is non-empty |
+| 19 | `known-libraries.json` is valid JSON |
+| 20 | `known-libraries.json` top-level structure is an array |
+| 21 | `known-libraries.json` array is non-empty |
+| 24 | `registry-additional-info.json` is valid JSON |
+| 25 | `registry-additional-info.json` top-level structure is an object |
+| 26 | `registry-additional-info.json.useful_md_probe_base_urls` is a non-empty array |
+| 27 | Every `useful_md_probe_base_urls` entry is a valid URL |
 
 #### Optional network checks (slow)
 

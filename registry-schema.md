@@ -1,6 +1,6 @@
 # Registry Schema Reference
 
-This document describes the JSON structure of registry entries (`known-libraries.json`) and the `resolve_library` tool response.
+This document describes the JSON structure of registry entries (`known-libraries.json`), supplemental registry metadata (`registry-additional-info.json`), and the `resolve_library` tool response.
 
 ## Registry Entry (known-libraries.json)
 
@@ -42,6 +42,7 @@ These describe the library as a whole — identity and documentation entry point
 | `name` | string | yes | Human-readable display name. Passed through to the agent as-is. |
 | `description` | string | no | Short description of what the library does. Defaults to `""`. |
 | `llms_txt_url` | string | yes | The canonical entry point — the library's documentation index. This becomes `index_url` in the response. Also used to build the SSRF domain allowlist. |
+| `llms_full_txt_url` | string | no | Optional full-documentation entry point when the provider publishes an `llms-full.txt` companion URL. |
 | `aliases` | list[string] | no | Alternative names for the library (e.g., `"lang-chain"` for langchain). Matched in step 3 of resolution. Defaults to `[]`. |
 | `packages` | list[PackageEntry] | no | Package groups by ecosystem. This is where language-specific metadata lives. Defaults to `[]`. |
 
@@ -56,6 +57,29 @@ Each `PackageEntry` represents a group of packages within a single ecosystem, sc
 | `package_names` | list[string] | yes | Package names in this ecosystem that belong to this library. E.g., `["langchain", "langchain-core", "langchain-openai"]`. Every name here is indexed for step 1 (exact package match) and step 4 (fuzzy match) of the resolution algorithm. |
 | `readme_url` | string \| null | no | README URL for this package group. Python and JS SDKs typically have separate READMEs — this field lives per-package-group to support that. |
 | `repo_url` | string \| null | no | Source repository URL for this package group. Same rationale — separate repos for separate language SDKs. |
+
+---
+
+## Additional Registry Info (`registry-additional-info.json`)
+
+This file stores supplemental data consumed alongside the main registry. Its current purpose is to track documentation URLs that are useful for probing direct Markdown endpoints by appending `.md`.
+
+```json
+{
+  "generated_at": "2026-03-23T19:27:28.597090+00:00",
+  "useful_md_probe_base_urls": [
+    "https://docs.example.com",
+    "https://sdk.example.com"
+  ]
+}
+```
+
+### Fields
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `generated_at` | string | no | Generation timestamp for the supplemental data file. |
+| `useful_md_probe_base_urls` | list[string] | yes | Non-empty list of valid `http://` or `https://` base URLs where appending `.md` is expected to help determine whether the docs site exposes a valid Markdown document directly. |
 
 ---
 

@@ -57,13 +57,13 @@ Append your entry to the JSON array. See [registry-schema.md](registry-schema.md
 
 **`id` rules:** lowercase, alphanumeric, hyphens and underscores only, must start with a letter or digit — e.g. `langchain`, `openai`, `react`
 
-### 3. Validate and update the checksum
+### 3. Validate and update the checksums
 
 ```bash
 uv run scripts/validate.py all
 ```
 
-This validates the file structure and updates `registry_metadata.json` with a fresh checksum. Run `--urls` to also verify the URL is reachable:
+This validates the file structure and updates `registry_metadata.json` with fresh checksums for both registry JSON files. Run `--urls` to also verify the URL is reachable:
 
 ```bash
 uv run scripts/validate.py all --urls
@@ -76,8 +76,10 @@ uv run scripts/validate.py all --urls
 See **[registry-schema.md](registry-schema.md)** for the complete field reference, including:
 
 - Library-level fields (`id`, `name`, `description`, `llms_txt_url`, `aliases`, `packages`)
+- Optional library-level fields such as `llms_full_txt_url`
 - `PackageEntry` fields (`ecosystem`, `languages`, `package_names`, `readme_url`, `repo_url`)
 - Valid `ecosystem` values (`"pypi"`, `"npm"`, `"conda"`, `"jsr"`)
+- Supplemental `registry-additional-info.json` fields
 - The `resolve_library` response format
 
 ---
@@ -224,7 +226,7 @@ Do **not** use this pattern when both languages are covered by the same `llms.tx
 
 1. Edit the relevant entry in `docs/known-libraries.json`.
 2. If you are fixing a broken `llms_txt_url`, verify the new URL is reachable before submitting.
-3. Run validation and update the checksum:
+3. Run validation and update the checksums:
 
 ```bash
 uv run scripts/validate.py all

@@ -36,7 +36,8 @@
         const el = document.getElementById("meta");
         el.innerHTML =
           "<span>Version:</span> " + meta.version +
-          "<br><span>Checksum:</span> " + meta.checksum;
+          "<br><span>Registry checksum:</span> " + meta.checksum +
+          "<br><span>Additional info checksum:</span> " + (meta.additional_info_checksum || "n/a");
       });
 
     fetch("known-libraries.json")
