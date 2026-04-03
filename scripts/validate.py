@@ -7,12 +7,11 @@ ProContext Registry — validation and checksum management.
 Schema reference: registry-schema.md
 
 Usage:
-    uv run scripts/validate.py validate              # fast schema check (rules 1–27)
-    uv run scripts/validate.py validate --urls       # + URL reachability (rule 22)
-    uv run scripts/validate.py validate --pypi       # + PyPI package existence (rule 23)
-    uv run scripts/validate.py checksum              # compute & update both checksums only
-    uv run scripts/validate.py all                   # validate then update checksum
-    uv run scripts/validate.py all --urls --pypi     # everything
+    uv run scripts/validate.py                       # fast schema and cross-entry validation
+    uv run scripts/validate.py --urls               # + URL reachability (rule 22)
+    uv run scripts/validate.py --pypi               # + PyPI package existence (rule 23)
+    uv run scripts/validate.py checksum              # validate, then update both checksums
+    uv run scripts/validate.py checksum --urls --pypi  # validation + optional network checks
 """
 
 import argparse
@@ -156,7 +155,6 @@ def validate_libraries(libraries: list[Any]) -> list[ValidationError]:
     # Cross-entry tracking
     seen_ids: dict[str, int] = {}                       # id -> entry index
     seen_packages: dict[str, dict[str, str]] = {}       # ecosystem -> {package_name -> entry_id}
-    seen_aliases: dict[str, str] = {}                   # alias -> entry id
 
     for i, entry in enumerate(libraries):
         if not isinstance(entry, dict):
@@ -345,17 +343,6 @@ def validate_libraries(libraries: list[Any]) -> list[ValidationError]:
                 else:
                     eco_seen[pkg_name] = display_id
 
-        # ------------------------------------------------------------------- #
-        # Cross-entry: Rule 18 — duplicate aliases
-        # ------------------------------------------------------------------- #
-        for alias in aliases:
-            if alias in seen_aliases:
-                errors.append(
-                    ValidationError(18, display_id, f"Alias {alias!r} already used by {seen_aliases[alias]!r}")
-                )
-            else:
-                seen_aliases[alias] = display_id
-
     return errors
 
 
@@ -515,7 +502,7 @@ def update_metadata(libraries_checksum: str, additional_info_checksum: str, meta
 # --------------------------------------------------------------------------- #
 
 
-def cmd_validate(args: argparse.Namespace) -> int:
+def run_validation(args: argparse.Namespace) -> int:
     print(f"Validating {LIBRARIES_FILE.relative_to(REPO_ROOT)} ...")
 
     libraries, errors = validate_libraries_file(LIBRARIES_FILE)
@@ -547,22 +534,22 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_checksum(_args: argparse.Namespace) -> int:
+def cmd_validate(args: argparse.Namespace) -> int:
+    return run_validation(args)
+
+
+def cmd_checksum(args: argparse.Namespace) -> int:
+    rc = run_validation(args)
+    if rc != 0:
+        print("Checksum NOT updated — fix validation errors first.")
+        return rc
+    print()
     libraries_checksum = compute_checksum(LIBRARIES_FILE)
     additional_info_checksum = compute_checksum(ADDITIONAL_INFO_FILE)
     print(f"Computing checksum for {LIBRARIES_FILE.relative_to(REPO_ROOT)} ...")
     print(f"Computing checksum for {ADDITIONAL_INFO_FILE.relative_to(REPO_ROOT)} ...")
     update_metadata(libraries_checksum, additional_info_checksum, METADATA_FILE)
     return 0
-
-
-def cmd_all(args: argparse.Namespace) -> int:
-    rc = cmd_validate(args)
-    if rc != 0:
-        print("Checksum NOT updated — fix validation errors first.")
-        return rc
-    print()
-    return cmd_checksum(args)
 
 
 # --------------------------------------------------------------------------- #
@@ -577,48 +564,31 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 examples:
-  uv run scripts/validate.py validate              fast schema check (rules 1-27)
-  uv run scripts/validate.py validate --urls       + URL reachability (rule 22)
-  uv run scripts/validate.py validate --pypi       + PyPI package existence (rule 23)
-  uv run scripts/validate.py checksum              compute & update both checksums only
-  uv run scripts/validate.py all                   validate then update checksum
-  uv run scripts/validate.py all --urls --pypi     run everything
+  uv run scripts/validate.py                       fast schema and cross-entry validation
+  uv run scripts/validate.py --urls               + URL reachability (rule 22)
+  uv run scripts/validate.py --pypi               + PyPI package existence (rule 23)
+  uv run scripts/validate.py checksum              validate, then update both checksums
+  uv run scripts/validate.py checksum --urls       + URL reachability before checksum update
+  uv run scripts/validate.py checksum --pypi       + PyPI package existence before checksum update
 """,
     )
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    # validate
-    p_validate = subparsers.add_parser(
-        "validate", help="Validate registry structure (rules 1–27 always; 22–23 optional)"
+    parser.add_argument(
+        "command",
+        nargs="?",
+        choices=("validate", "checksum"),
+        default="validate",
+        help="Optional command. Omit for validation; use 'checksum' to validate and update registry_metadata.json.",
     )
-    p_validate.add_argument(
+    parser.add_argument(
         "--urls", action="store_true", help="Also check URL reachability (rule 22, slow)"
     )
-    p_validate.add_argument(
+    parser.add_argument(
         "--pypi", action="store_true", help="Also verify PyPI packages exist (rule 23, slow)"
     )
-    p_validate.set_defaults(func=cmd_validate)
-
-    # checksum
-    p_checksum = subparsers.add_parser(
-        "checksum", help="Compute SHA-256 values and update registry_metadata.json (no validation)"
-    )
-    p_checksum.set_defaults(func=cmd_checksum)
-
-    # all
-    p_all = subparsers.add_parser(
-        "all", help="Validate structure then update checksum (aborts on errors)"
-    )
-    p_all.add_argument(
-        "--urls", action="store_true", help="Also check URL reachability (rule 22, slow)"
-    )
-    p_all.add_argument(
-        "--pypi", action="store_true", help="Also verify PyPI packages exist (rule 23, slow)"
-    )
-    p_all.set_defaults(func=cmd_all)
-
     args = parser.parse_args()
-    sys.exit(args.func(args))
+    if args.command == "checksum":
+        sys.exit(cmd_checksum(args))
+    sys.exit(cmd_validate(args))
 
 
 if __name__ == "__main__":

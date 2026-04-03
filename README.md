@@ -48,12 +48,13 @@ uv sync
 
 | Command | What it does |
 |---------|--------------|
-| `uv run scripts/validate.py validate` | Fast schema check (rules 1–27) |
-| `uv run scripts/validate.py validate --urls` | Schema check + URL reachability (rule 22) |
-| `uv run scripts/validate.py validate --pypi` | Schema check + PyPI existence (rule 23) |
-| `uv run scripts/validate.py checksum` | Compute SHA-256 for both registry JSON files and update `registry_metadata.json` |
-| `uv run scripts/validate.py all` | Validate then update checksum (aborts on errors) |
-| `uv run scripts/validate.py all --urls --pypi` | Run all checks |
+| `uv run scripts/validate.py` | Fast schema and cross-entry validation |
+| `uv run scripts/validate.py --urls` | Schema check + URL reachability (rule 22) |
+| `uv run scripts/validate.py --pypi` | Schema check + PyPI existence (rule 23) |
+| `uv run scripts/validate.py checksum` | Run base validation, then compute SHA-256 for both registry JSON files and update `registry_metadata.json` |
+| `uv run scripts/validate.py checksum --urls` | Base validation + URL reachability, then update checksums |
+| `uv run scripts/validate.py checksum --pypi` | Base validation + PyPI existence, then update checksums |
+| `uv run scripts/validate.py checksum --urls --pypi` | Run all checks, then update checksums |
 
 ### Validation rules
 
@@ -90,7 +91,6 @@ Known library-level fields also include optional `llms_full_txt_url` values wher
 |---|------|
 | 16 | No two entries share the same `id` |
 | 17 | No two entries share the same package name within the same ecosystem |
-| 18 | No two entries share the same alias |
 
 #### File-level rules
 

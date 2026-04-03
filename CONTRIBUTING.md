@@ -60,13 +60,13 @@ Append your entry to the JSON array. See [registry-schema.md](registry-schema.md
 ### 3. Validate and update the checksums
 
 ```bash
-uv run scripts/validate.py all
+uv run scripts/validate.py checksum
 ```
 
 This validates the file structure and updates `registry_metadata.json` with fresh checksums for both registry JSON files. Run `--urls` to also verify the URL is reachable:
 
 ```bash
-uv run scripts/validate.py all --urls
+uv run scripts/validate.py checksum --urls
 ```
 
 ---
@@ -229,7 +229,7 @@ Do **not** use this pattern when both languages are covered by the same `llms.tx
 3. Run validation and update the checksums:
 
 ```bash
-uv run scripts/validate.py all
+uv run scripts/validate.py checksum
 ```
 
 ---
@@ -238,5 +238,5 @@ uv run scripts/validate.py all
 
 1. Fork this repository and create a branch with a descriptive name (e.g. `add-langchain`, `fix-openai-url`).
 2. Make your changes following the steps above.
-3. Run `uv run scripts/validate.py all` and confirm it exits cleanly.
+3. Run `uv run scripts/validate.py checksum` and confirm it exits cleanly.
 4. Open a pull request with a short description of what you added or changed and why.
