@@ -896,12 +896,13 @@
   {
     "id": "langchain",
     "name": "LangChain",
-    "description": "The framework for building LLM-powered applications, offering chains, agents, and retrieval strategies with support for various LLM providers.",
+    "description": "The framework for building LLM-powered applications, offering chains, agents, and retrieval strategies with support for various LLM providers. Includes documentation for LangChain, LangGraph, LangSmith & Deep Agents.",
     "llms_txt_url": "https://docs.langchain.com/llms.txt",
     "aliases": [
       "langgraph",
-      "langfuse",
-      "llamaindex"
+      "langsmith",
+      "deepagents",
+      "deep agents"
     ],
     "packages": [
       {
@@ -15406,64 +15407,6 @@
     "aliases": [
       "landscapers",
       "app"
-    ],
-    "packages": []
-  },
-  {
-    "id": "langchain-javascript-docs",
-    "name": "LangChain (JavaScript docs)",
-    "description": "LangChain is a framework for developing applications powered by large language models (LLMs).",
-    "llms_txt_url": "https://js.langchain.com/llms.txt",
-    "aliases": [
-      "langchain",
-      "javascript",
-      "docs",
-      "langchain javascript",
-      "javascript docs"
-    ],
-    "packages": [],
-    "llms_full_txt_url": "https://docs.langchain.com/llms-full.txt"
-  },
-  {
-    "id": "langchain-python-docs",
-    "name": "LangChain (Python docs)",
-    "description": "LangChain is a framework for developing applications powered by large language models (LLMs).",
-    "llms_txt_url": "https://python.langchain.com/llms.txt",
-    "aliases": [
-      "langchain",
-      "python",
-      "docs",
-      "langchain python",
-      "python docs"
-    ],
-    "packages": [],
-    "llms_full_txt_url": "https://docs.langchain.com/llms-full.txt"
-  },
-  {
-    "id": "langgraph-javascript-docs",
-    "name": "LangGraph (JavaScript Docs)",
-    "description": "LangGraph JS \u2014 used by Replit, Uber, LinkedIn, GitLab and more \u2014 is a low-level orchestration framework for building controllable agents.",
-    "llms_txt_url": "https://langchain-ai.github.io/langgraphjs/llms.txt",
-    "aliases": [
-      "langgraph",
-      "javascript",
-      "docs",
-      "langgraph javascript",
-      "javascript docs"
-    ],
-    "packages": []
-  },
-  {
-    "id": "langgraph-python-docs",
-    "name": "LangGraph (Python Docs)",
-    "description": "LangGraph \u2014 used by Replit, Uber, LinkedIn, GitLab and more \u2014 is a low-level orchestration framework for building controllable agents.",
-    "llms_txt_url": "https://langchain-ai.github.io/langgraph/llms.txt",
-    "aliases": [
-      "langgraph",
-      "python",
-      "docs",
-      "langgraph python",
-      "python docs"
     ],
     "packages": []
   },
